@@ -1,0 +1,115 @@
+import pygame
+import random
+
+# Initialize Pygame
+pygame.init()
+
+# Constants
+WIDTH, HEIGHT = 400, 600
+FPS = 60
+GRAVITY = 0.5
+FLAP_STRENGTH = -10
+PIPE_WIDTH = 80
+PIPE_GAP = 150
+
+# Colors
+WHITE = (255, 255, 255)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
+
+# Bird class
+class Bird:
+    def __init__(self):
+        self.image = pygame.Surface((30, 30))
+        self.image.fill(BLUE)
+        self.rect = self.image.get_rect(center=(100, HEIGHT // 2))
+        self.velocity = 0
+
+    def flap(self):
+        self.velocity = FLAP_STRENGTH
+
+    def update(self):
+        self.velocity += GRAVITY
+        self.rect.y += self.velocity
+        if self.rect.y > HEIGHT:
+            self.rect.y = HEIGHT
+            self.velocity = 0
+
+# Pipe class
+class Pipe:
+    def __init__(self):
+        self.top = random.randint(50, HEIGHT - PIPE_GAP - 50)
+        self.bottom = HEIGHT - self.top - PIPE_GAP
+        self.x = WIDTH
+        self.passed = False
+
+    def update(self):
+        self.x -= 5
+
+    def draw(self, surface):
+        pygame.draw.rect(surface, GREEN, (self.x, 0, PIPE_WIDTH, self.top))
+        pygame.draw.rect(surface, GREEN, (self.x, HEIGHT - self.bottom, PIPE_WIDTH, self.bottom))
+
+# Game function
+def game():
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    clock = pygame.time.Clock()
+
+    bird = Bird()
+    pipes = []
+    score = 0
+    running = True
+
+    # Create first pipe
+    pipes.append(Pipe())
+
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    bird.flap()
+
+        bird.update()
+
+        # Update pipes
+        if pipes:
+            for pipe in pipes:
+                pipe.update()
+                if pipe.x < -PIPE_WIDTH:
+                    pipes.remove(pipe)
+                    score += 1
+                if not pipe.passed and pipe.x < bird.rect.x:
+                    pipe.passed = True
+
+        # Spawn new pipes
+        if len(pipes) < 3 and pipes[-1].x < WIDTH - 200:
+            pipes.append(Pipe())
+
+        # Check for collisions
+        if bird.rect.y >= HEIGHT or bird.rect.y <= 0 or any(
+            pipe.x < bird.rect.x + bird.rect.width < pipe.x + PIPE_WIDTH and
+            (bird.rect.y < pipe.top or bird.rect.y + bird.rect.height > HEIGHT - pipe.bottom)
+            for pipe in pipes):
+            running = False
+
+        # Drawing
+        screen.fill(WHITE)
+        bird.update()
+        screen.blit(bird.image, bird.rect)
+        for pipe in pipes:
+            pipe.draw(screen)
+
+        # Display score
+        font = pygame.font.Font(None, 36)
+        score_text = font.render(str(score), True, (0, 0, 0))
+        screen.blit(score_text, (WIDTH // 2, 20))
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+    pygame.quit()
+
+if __name__ == "__main__":
+    game()
